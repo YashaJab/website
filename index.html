@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Trying hard</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  padding: 40px;
+  text-align: center;
+}
+
+/* Username section */
+#userSettings {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  text-align: left;
+}
+
+#username {
+  height: 35px;
+  width: 160px;
+}
+
+#nameNote {
+  font-size: 12px;
+  color: #555;
+  margin-top: 3px;
+}
+
+#colorBtn {
+  height: 35px;
+  width: 35px;
+  border-radius: 6px;
+  border: 2px solid #333;
+  cursor: pointer;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Improved color grid */
+#colorPalette {
+  display: none;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(5, 30px);
+  gap: 8px;
+  background: white;
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.colorSquare {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.colorSquare:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Timer */
+#timer {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  font-weight: bold;
+}
+
+/* Chat */
+#comments {
+  max-width: 600px;
+  margin: auto;
+  text-align: left;
+}
+
+.comment {
+  background: #eee;
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 6px;
+  word-wrap: break-word;
+}
+
+button, input {
+  padding: 8px;
+  margin: 5px;
+  font-size: 14px;
+}
+
+/* Rickroll */
+#rickroll {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: black;
+  z-index: 999;
+}
+
+#rickroll img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+  /* Dark mode */
+.dark {
+  background: #121212;
+  color: white;
+}
+
+.dark .comment {
+  background: #1e1e1e;
+}
+
+input:checked + .slider {
+  background-color: #4cd964;
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="userSettings">
+  <input id="username" placeholder="Your name">
+  <div id="colorBtn"></div>
+  <div id="nameNote">You need to enter your name to write comment</div>
+  <div id="colorPalette"></div>
+  
+</div>
+
+<div id="timer">Reset in: 10:00</div>
+
+<h2>Made by try hards</h2>
+
+<input id="msg" placeholder="Write a comment">
+<button id="postBtn" onclick="post()">Post</button>
+<button onclick="rickroll()">View hours</button>
+
+<div id="comments"></div>
+
+<div id="rickroll" onclick="closeRickroll()">
+  <img src="https://media.giphy.com/media/Vuw9m5wXviFIQ/giphy.gif">
+</div>
+
+<script>
+
+// Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyA6-aUnsjspvJ_cytAfGDYWRnF7ydc0wHk",
+  authDomain: "site-976a4.firebaseapp.com",
+  databaseURL: "https://site-976a4-default-rtdb.firebaseio.com",
+  projectId: "site-976a4",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database().ref("comments");
+
+// 20 colors
+const colors = [
+"#ff0000","#00ff00","#0000ff","#ff9900","#ff00ff",
+"#00ffff","#800000","#008000","#000080","#808000",
+"#800080","#008080","#444444","#999999","#ff4444",
+"#44ff44","#4444ff","#ffaa00","#aa00ff","#00ffaa"
+];
+
+let selectedColor = colors[0];
+colorBtn.style.background = selectedColor;
+
+// Build color grid
+colorPalette.style.display = "grid";
+colors.forEach(c => {
+  let sq = document.createElement("div");
+  sq.className = "colorSquare";
+  sq.style.background = c;
+  sq.onclick = () => {
+    selectedColor = c;
+    colorBtn.style.background = c;
+    colorPalette.style.display = "none";
+  };
+  colorPalette.appendChild(sq);
+});
+
+// Toggle palette
+colorBtn.onclick = () => {
+  colorPalette.style.display =
+    colorPalette.style.display === "grid" ? "none" : "grid";
+};
+
+// Require username
+postBtn.disabled = true;
+username.oninput = () => {
+  postBtn.disabled = username.value.trim() === "";
+};
+
+function post() {
+  let text = msg.value.trim();
+  let name = username.value.trim();
+
+  if (!name) {
+    alert("You must enter your name to chat.");
+    return;
+  }
+
+  if (!text) return;
+
+  db.push({
+    name: name,
+    message: text,
+    color: selectedColor,
+    time: Date.now()
+  });
+
+  msg.value = "";
+  timeLeft = 600; // Reset timer to 10 minutes
+}
+
+// Real-time listener
+db.on("value", snap => {
+  comments.innerHTML = "";
+  snap.forEach(c => {
+    let data = c.val();
+    comments.innerHTML += `
+      <div class="comment">
+        <span style="color:${data.color}; font-weight:bold;">
+          ${escapeHTML(data.name)}
+        </span>: ${escapeHTML(data.message)}
+      </div>
+    `;
+  });
+});
+
+// Prevent HTML injection
+function escapeHTML(str) {
+  return str.replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#039;"
+  }[m]));
+}
+
+// Rickroll
+function rickroll() {
+  document.getElementById("rickroll").style.display = "block";
+}
+
+function closeRickroll() {
+  document.getElementById("rickroll").style.display = "none";
+}
+
+// Timer (10 minutes)
+let timeLeft = 600;
+
+setInterval(() => {
+  timeLeft--;
+  let min = Math.floor(timeLeft / 60);
+  let sec = timeLeft % 60;
+  timer.innerText =
+    `Reset in: ${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+
+  if (timeLeft <= 0) {
+    db.remove();
+    timeLeft = 600;
+  }
+}, 1000);
+
+
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
