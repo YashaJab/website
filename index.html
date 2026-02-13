@@ -5,53 +5,130 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 
 <style>
-body { font-family: Arial; padding: 40px; text-align: center; }
-
-#userSettings {
-  position: fixed; top: 10px; left: 10px; text-align: left;
+body {
+  font-family: Arial;
+  padding: 40px;
+  text-align: center;
 }
 
-#username { height: 35px; width: 160px; }
+/* Username section */
+#userSettings {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  text-align: left;
+}
 
-#nameNote { font-size: 12px; color: #555; margin-top: 3px; }
+#username {
+  height: 35px;
+  width: 160px;
+}
+
+#nameNote {
+  font-size: 12px;
+  color: #555;
+  margin-top: 3px;
+}
 
 #colorBtn {
-  height: 35px; width: 35px; border-radius: 6px;
-  border: 2px solid #333; cursor: pointer;
-  display: inline-block; vertical-align: middle;
+  height: 35px;
+  width: 35px;
+  border-radius: 6px;
+  border: 2px solid #333;
+  cursor: pointer;
+  display: inline-block;
+  vertical-align: middle;
 }
 
+/* Improved color grid */
 #colorPalette {
-  display: none; margin-top: 8px;
+  display: none;
+  margin-top: 8px;
+  display: grid;
   grid-template-columns: repeat(5, 30px);
-  gap: 8px; background: white; padding: 8px;
-  border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  gap: 8px;
+  background: white;
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.colorSquare { width: 30px; height: 30px; border-radius: 6px; cursor: pointer; }
+.colorSquare {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
 
+.colorSquare:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Timer */
 #timer {
-  position: fixed; top: 10px; right: 10px; font-weight: bold;
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  font-weight: bold;
 }
 
-#comments { max-width: 600px; margin: auto; text-align: left; }
+/* Chat */
+#comments {
+  max-width: 600px;
+  margin: auto;
+  text-align: left;
+}
 
 .comment {
-  background: #eee; padding: 8px; margin: 5px 0;
-  border-radius: 6px; word-wrap: break-word;
+  background: #eee;
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 6px;
+  word-wrap: break-word;
 }
 
-button, input { padding: 8px; margin: 5px; font-size: 14px; }
+button, input {
+  padding: 8px;
+  margin: 5px;
+  font-size: 14px;
+}
 
+/* Rickroll */
 #rickroll {
-  display: none; position: fixed; inset: 0;
-  background: black; z-index: 999;
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: black;
+  z-index: 999;
 }
 
-#rickroll img { width: 100%; height: 100%; object-fit: cover; }
+#rickroll img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+  /* Dark mode */
+.dark {
+  background: #121212;
+  color: white;
+}
+
+.dark .comment {
+  background: #1e1e1e;
+}
+
+input:checked + .slider {
+  background-color: #4cd964;
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
 </style>
 </head>
 
@@ -62,14 +139,15 @@ button, input { padding: 8px; margin: 5px; font-size: 14px; }
   <div id="colorBtn"></div>
   <div id="nameNote">You need to enter your name to write comment</div>
   <div id="colorPalette"></div>
+  
 </div>
 
-<div id="timer">Syncing…</div>
+<div id="timer">Reset in: 10:00</div>
 
 <h2>Made by try hards</h2>
 
 <input id="msg" placeholder="Write a comment">
-<button id="postBtn" onclick="post()" disabled>Post</button>
+<button id="postBtn" onclick="post()">Post</button>
 <button onclick="rickroll()">View hours</button>
 
 <div id="comments"></div>
@@ -89,14 +167,9 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-
-const auth = firebase.auth();
 const db = firebase.database().ref("comments");
-const timerRef = firebase.database().ref("sharedTimer");
 
-auth.signInAnonymously();
-
-// Color palette
+// 20 colors
 const colors = [
 "#ff0000","#00ff00","#0000ff","#ff9900","#ff00ff",
 "#00ffff","#800000","#008000","#000080","#808000",
@@ -107,6 +180,8 @@ const colors = [
 let selectedColor = colors[0];
 colorBtn.style.background = selectedColor;
 
+// Build color grid
+colorPalette.style.display = "grid";
 colors.forEach(c => {
   let sq = document.createElement("div");
   sq.className = "colorSquare";
@@ -119,89 +194,56 @@ colors.forEach(c => {
   colorPalette.appendChild(sq);
 });
 
+// Toggle palette
 colorBtn.onclick = () => {
   colorPalette.style.display =
     colorPalette.style.display === "grid" ? "none" : "grid";
 };
 
-// Enable button only when valid
-msg.oninput = username.oninput = () => {
-  postBtn.disabled =
-    !username.value.trim() || !msg.value.trim();
+// Require username
+postBtn.disabled = true;
+username.oninput = () => {
+  postBtn.disabled = username.value.trim() === "";
 };
 
-// Shared timer state
-let sharedResetTime = 0;
-
-// 🔥 FIXED TIMER INIT
-timerRef.on("value", snap => {
-  const data = snap.val();
-
-  if (!data || !data.resetAt) {
-    const start = Date.now() + 600000;
-    timerRef.set({ resetAt: start });
-    sharedResetTime = start;
-  } else {
-    sharedResetTime = data.resetAt;
-  }
-});
-
-// Post message
 function post() {
   let text = msg.value.trim();
   let name = username.value.trim();
-  if (!name || !text) return;
+
+  if (!name) {
+    alert("You must enter your name to chat.");
+    return;
+  }
+
+  if (!text) return;
 
   db.push({
-    name,
+    name: name,
     message: text,
     color: selectedColor,
     time: Date.now()
   });
 
   msg.value = "";
-  postBtn.disabled = true;
-
-  timerRef.set({ resetAt: Date.now() + 600000 });
+  timeLeft = 600; // Reset timer to 10 minutes
 }
 
-// Chat display
+// Real-time listener
 db.on("value", snap => {
   comments.innerHTML = "";
   snap.forEach(c => {
-    let d = c.val();
+    let data = c.val();
     comments.innerHTML += `
       <div class="comment">
-        <span style="color:${d.color}; font-weight:bold;">
-          ${escapeHTML(d.name)}
-        </span>: ${escapeHTML(d.message)}
-      </div>`;
+        <span style="color:${data.color}; font-weight:bold;">
+          ${escapeHTML(data.name)}
+        </span>: ${escapeHTML(data.message)}
+      </div>
+    `;
   });
 });
 
-// Global timer loop
-setInterval(() => {
-  if (!sharedResetTime) return;
-
-  const now = Date.now();
-  let left = Math.floor((sharedResetTime - now) / 1000);
-
-  if (left <= 0) {
-    db.remove();
-    const next = Date.now() + 600000;
-    timerRef.set({ resetAt: next });
-    sharedResetTime = next;
-    return;
-  }
-
-  let m = Math.floor(left / 60);
-  let s = left % 60;
-
-  timer.innerText =
-    `Reset in: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}, 1000);
-
-// Security
+// Prevent HTML injection
 function escapeHTML(str) {
   return str.replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",
@@ -218,7 +260,25 @@ function closeRickroll() {
   document.getElementById("rickroll").style.display = "none";
 }
 
+// Timer (10 minutes)
+let timeLeft = 600;
+
+setInterval(() => {
+  timeLeft--;
+  let min = Math.floor(timeLeft / 60);
+  let sec = timeLeft % 60;
+  timer.innerText =
+    `Reset in: ${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+
+  if (timeLeft <= 0) {
+    db.remove();
+    timeLeft = 600;
+  }
+}, 1000);
+
+
 </script>
 
 </body>
 </html>
+
