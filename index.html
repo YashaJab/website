@@ -8,95 +8,50 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 
 <style>
-body {
-  font-family: Arial;
-  padding: 40px;
-  text-align: center;
-}
+body { font-family: Arial; padding: 40px; text-align: center; }
 
 #userSettings {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  text-align: left;
+  position: fixed; top: 10px; left: 10px; text-align: left;
 }
 
 #username { height: 35px; width: 160px; }
 
-#nameNote {
-  font-size: 12px;
-  color: #555;
-  margin-top: 3px;
-}
+#nameNote { font-size: 12px; color: #555; margin-top: 3px; }
 
 #colorBtn {
-  height: 35px;
-  width: 35px;
-  border-radius: 6px;
-  border: 2px solid #333;
-  cursor: pointer;
-  display: inline-block;
-  vertical-align: middle;
+  height: 35px; width: 35px; border-radius: 6px;
+  border: 2px solid #333; cursor: pointer;
+  display: inline-block; vertical-align: middle;
 }
 
 #colorPalette {
-  display: none;
-  margin-top: 8px;
+  display: none; margin-top: 8px;
   grid-template-columns: repeat(5, 30px);
-  gap: 8px;
-  background: white;
-  padding: 8px;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  gap: 8px; background: white; padding: 8px;
+  border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.colorSquare {
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  cursor: pointer;
-}
+.colorSquare { width: 30px; height: 30px; border-radius: 6px; cursor: pointer; }
 
 #timer {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  font-weight: bold;
+  position: fixed; top: 10px; right: 10px; font-weight: bold;
 }
 
-#comments {
-  max-width: 600px;
-  margin: auto;
-  text-align: left;
-}
+#comments { max-width: 600px; margin: auto; text-align: left; }
 
 .comment {
-  background: #eee;
-  padding: 8px;
-  margin: 5px 0;
-  border-radius: 6px;
-  word-wrap: break-word;
+  background: #eee; padding: 8px; margin: 5px 0;
+  border-radius: 6px; word-wrap: break-word;
 }
 
-button, input {
-  padding: 8px;
-  margin: 5px;
-  font-size: 14px;
-}
+button, input { padding: 8px; margin: 5px; font-size: 14px; }
 
 #rickroll {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: black;
-  z-index: 999;
+  display: none; position: fixed; inset: 0;
+  background: black; z-index: 999;
 }
 
-#rickroll img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+#rickroll img { width: 100%; height: 100%; object-fit: cover; }
 </style>
 </head>
 
@@ -175,18 +130,19 @@ msg.oninput = username.oninput = () => {
     !username.value.trim() || !msg.value.trim();
 };
 
-// Shared timer sync
+// Shared timer state
 let sharedResetTime = 0;
 
+// 🔥 FIXED TIMER INIT
 timerRef.on("value", snap => {
   const data = snap.val();
 
-  if (data && data.resetAt) {
-    sharedResetTime = data.resetAt;
-  } else {
+  if (!data || !data.resetAt) {
     const start = Date.now() + 600000;
     timerRef.set({ resetAt: start });
     sharedResetTime = start;
+  } else {
+    sharedResetTime = data.resetAt;
   }
 });
 
@@ -194,7 +150,6 @@ timerRef.on("value", snap => {
 function post() {
   let text = msg.value.trim();
   let name = username.value.trim();
-
   if (!name || !text) return;
 
   db.push({
@@ -207,14 +162,12 @@ function post() {
   msg.value = "";
   postBtn.disabled = true;
 
-  // reset global timer
   timerRef.set({ resetAt: Date.now() + 600000 });
 }
 
-// Chat listener
+// Chat display
 db.on("value", snap => {
   comments.innerHTML = "";
-
   snap.forEach(c => {
     let d = c.val();
     comments.innerHTML += `
@@ -226,19 +179,15 @@ db.on("value", snap => {
   });
 });
 
-// Timer loop (global clear)
+// Global timer loop
 setInterval(() => {
-  if (!sharedResetTime) {
-    timer.innerText = "Syncing…";
-    return;
-  }
+  if (!sharedResetTime) return;
 
   const now = Date.now();
   let left = Math.floor((sharedResetTime - now) / 1000);
 
   if (left <= 0) {
-    db.remove(); // clear chat globally
-
+    db.remove();
     const next = Date.now() + 600000;
     timerRef.set({ resetAt: next });
     sharedResetTime = next;
@@ -252,7 +201,7 @@ setInterval(() => {
     `Reset in: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }, 1000);
 
-// Escape HTML
+// Security
 function escapeHTML(str) {
   return str.replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",
@@ -270,5 +219,6 @@ function closeRickroll() {
 }
 
 </script>
+
 </body>
 </html>
