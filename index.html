@@ -21,10 +21,7 @@ body {
   text-align: left;
 }
 
-#username {
-  height: 35px;
-  width: 160px;
-}
+#username { height: 35px; width: 160px; }
 
 #nameNote {
   font-size: 12px;
@@ -112,12 +109,12 @@ button, input {
   <div id="colorPalette"></div>
 </div>
 
-<div id="timer">Reset in: 10:00</div>
+<div id="timer">Syncing…</div>
 
 <h2>Made by try hards</h2>
 
 <input id="msg" placeholder="Write a comment">
-<button id="postBtn" onclick="post()">Post</button>
+<button id="postBtn" onclick="post()" disabled>Post</button>
 <button onclick="rickroll()">View hours</button>
 
 <div id="comments"></div>
@@ -128,9 +125,9 @@ button, input {
 
 <script>
 
-// Firebase init
+// Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyA6-aUnsjspvJ_cytAfGDYWRnF7ydc0wHk",
+  apiKey: "YOUR_KEY",
   authDomain: "site-976a4.firebaseapp.com",
   databaseURL: "https://site-976a4-default-rtdb.firebaseio.com",
   projectId: "site-976a4",
@@ -142,10 +139,9 @@ const auth = firebase.auth();
 const db = firebase.database().ref("comments");
 const timerRef = firebase.database().ref("sharedTimer");
 
-// Anonymous login
 auth.signInAnonymously();
 
-// Colors
+// Color palette
 const colors = [
 "#ff0000","#00ff00","#0000ff","#ff9900","#ff00ff",
 "#00ffff","#800000","#008000","#000080","#808000",
@@ -173,13 +169,13 @@ colorBtn.onclick = () => {
     colorPalette.style.display === "grid" ? "none" : "grid";
 };
 
-// Username required
-postBtn.disabled = true;
-username.oninput = () => {
-  postBtn.disabled = username.value.trim() === "";
+// Enable button only when valid
+msg.oninput = username.oninput = () => {
+  postBtn.disabled =
+    !username.value.trim() || !msg.value.trim();
 };
 
-// Shared timer state
+// Shared timer sync
 let sharedResetTime = 0;
 
 timerRef.on("value", snap => {
@@ -199,12 +195,7 @@ function post() {
   let text = msg.value.trim();
   let name = username.value.trim();
 
-  if (!name) {
-    alert("Enter your name first.");
-    return;
-  }
-
-  if (!text) return;
+  if (!name || !text) return;
 
   db.push({
     name,
@@ -214,8 +205,9 @@ function post() {
   });
 
   msg.value = "";
+  postBtn.disabled = true;
 
-  // reset shared timer
+  // reset global timer
   timerRef.set({ resetAt: Date.now() + 600000 });
 }
 
@@ -234,15 +226,19 @@ db.on("value", snap => {
   });
 });
 
-// Shared countdown display
+// Timer loop (global clear)
 setInterval(() => {
-  if (!sharedResetTime) return;
+  if (!sharedResetTime) {
+    timer.innerText = "Syncing…";
+    return;
+  }
 
   const now = Date.now();
   let left = Math.floor((sharedResetTime - now) / 1000);
 
   if (left <= 0) {
-    db.remove();
+    db.remove(); // clear chat globally
+
     const next = Date.now() + 600000;
     timerRef.set({ resetAt: next });
     sharedResetTime = next;
@@ -254,10 +250,9 @@ setInterval(() => {
 
   timer.innerText =
     `Reset in: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-
 }, 1000);
 
-// Security
+// Escape HTML
 function escapeHTML(str) {
   return str.replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",
