@@ -160,6 +160,9 @@ input:checked + .slider:before {
 <script>
 
   //authentificaton
+
+let currentUser = null;
+  
 const auth = firebase.auth();
 
 auth.signInAnonymously()
@@ -177,7 +180,7 @@ auth.onAuthStateChanged(user => {
   }
 });
 
-let currentUser = null;
+
 
 // Firebase
 const firebaseConfig = {
@@ -251,10 +254,6 @@ function post() {
     uid: currentUser.uid,
     time: Date.now()
   });
-
-  msg.value = "";
-  timeLeft = 600;
-}
 
   msg.value = "";
   timeLeft = 600; // Reset timer to 10 minutes
