@@ -4,23 +4,8 @@
 <title>Trying hard</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyA6-aUnsjspvJ_cytAfGDYWRnF7ydc0wHk",
-    authDomain: "site-976a4.firebaseapp.com",
-    databaseURL: "https://site-976a4-default-rtdb.firebaseio.com",
-    projectId: "site-976a4"
-  };
-
-  
-  firebase.initializeApp(firebaseConfig);
-
-  const auth = firebase.auth();
-  const database = firebase.database();
-</script>
 <style>
 body {
   font-family: Arial;
@@ -173,26 +158,13 @@ input:checked + .slider:before {
 
 <script>
 
-  //authentificaton
-
-let currentUser = null;
-  
-const auth = firebase.auth();
-
-auth.signInAnonymously()
-  .then(() => {
-    console.log("Signing in...");
-  })
-  .catch((error) => {
-    console.error("Auth error:", error);
-  });
-
-auth.onAuthStateChanged(user => {
-  if (user) {
-    console.log("User logged in:", user.uid);
-    currentUser = user;
-  }
-});
+// Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyA6-aUnsjspvJ_cytAfGDYWRnF7ydc0wHk",
+  authDomain: "site-976a4.firebaseapp.com",
+  databaseURL: "https://site-976a4-default-rtdb.firebaseio.com",
+  projectId: "site-976a4",
+};
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database().ref("comments");
@@ -235,12 +207,6 @@ username.oninput = () => {
 };
 
 function post() {
-
-  if (!currentUser) {
-    alert("Still connecting... please wait a second.");
-    return;
-  }
-
   let text = msg.value.trim();
   let name = username.value.trim();
 
@@ -255,7 +221,6 @@ function post() {
     name: name,
     message: text,
     color: selectedColor,
-    uid: currentUser.uid,
     time: Date.now()
   });
 
