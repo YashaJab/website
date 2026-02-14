@@ -10,6 +10,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 
 <style>
 body {
@@ -148,6 +149,7 @@ input:checked + .slider:before {
 </div>
 
 <div id="timer">Syncing...</div>
+<div id="onlineCount">Online: 0</div>
 
 
 <h2>Made by Tryhards</h2>
@@ -163,7 +165,10 @@ input:checked + .slider:before {
 </div>
 
 <script>
-// Firebase config
+document.addEventListener("DOMContentLoaded", () => {
+
+// ---------------- FIREBASE ----------------
+
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "site-976a4.firebaseapp.com",
@@ -175,65 +180,96 @@ firebase.initializeApp(firebaseConfig);
 
 const db = firebase.database().ref("comments");
 const timerRef = firebase.database().ref("globalTimer");
+const onlineRef = firebase.database().ref("onlineUsers");
 
-const TIMER_DURATION = 600; // 10 minutes
+const TIMER_DURATION = 600;
 
+// ---------------- DOM ----------------
 
+const timer = document.getElementById("timer");
+const comments = document.getElementById("comments");
+const username = document.getElementById("username");
+const msg = document.getElementById("msg");
+const postBtn = document.getElementById("postBtn");
+const colorBtn = document.getElementById("colorBtn");
+const colorPalette = document.getElementById("colorPalette");
+const onlineDisplay = document.getElementById("onlineCount");
+
+// ---------------- SETTINGS ----------------
+
+const SPAM_COOLDOWN = 3000;
+let lastPostTime = 0;
+
+const bannedWords = ["badword1","badword2","spam"];
+
+function containsBannedWord(text){
+  text = text.toLowerCase();
+  return bannedWords.some(w => text.includes(w));
+}
+
+// ---------------- AUTH ----------------
+
+if (firebase.auth) {
+  firebase.auth().signInAnonymously().catch(console.error);
+}
+
+// ---------------- ONLINE USERS ----------------
+
+const presence = onlineRef.push(true);
+presence.onDisconnect().remove();
+
+onlineRef.on("value", snap => {
+  if (onlineDisplay)
+    onlineDisplay.innerText = `Online: ${snap.numChildren()}`;
+});
 
 // ---------------- TIMER SYNC ----------------
 
 let resetAt = null;
 let synced = false;
 
-// create timer once (no refresh reset)
 timerRef.transaction(current => {
-  if (current === null) {
-    return Date.now() + TIMER_DURATION * 1000;
-  }
+  if (current === null)
+    return Date.now() + TIMER_DURATION*1000;
   return current;
 });
 
-// listen for shared timer
 timerRef.on("value", snap => {
   resetAt = snap.val();
-  if (resetAt) synced = true;
+  synced = true;
 });
 
-// display timer
 setInterval(() => {
 
-  if (!synced) {
+  if (!timer) return;
+
+  if (!synced || !resetAt){
     timer.innerText = "Syncing...";
     return;
   }
 
-  let remaining =
-    Math.floor((resetAt - Date.now()) / 1000);
+  let remaining = Math.floor((resetAt - Date.now())/1000);
 
-  if (remaining <= 0) {
-
+  if (remaining <= 0){
     timerRef.transaction(current => {
-      if (current <= Date.now()) {
+      if (current <= Date.now()){
         db.remove();
-        return Date.now() + TIMER_DURATION * 1000;
+        return Date.now() + TIMER_DURATION*1000;
       }
       return current;
     });
-
     remaining = TIMER_DURATION;
   }
 
-  let m = Math.floor(remaining / 60);
-  let s = remaining % 60;
+  let m = Math.floor(remaining/60);
+  let s = remaining%60;
 
   timer.innerText =
-    `Reset in: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    `Reset in: ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 
-}, 1000);
+},1000);
 
-
-
-// ---------------- COLOR SYSTEM ----------------
+// ---------------- COLORS ----------------
 
 const colors = [
 "#ff0000","#00ff00","#0000ff","#ff9900","#ff00ff",
@@ -243,73 +279,93 @@ const colors = [
 ];
 
 let selectedColor = colors[0];
-colorBtn.style.background = selectedColor;
 
-colors.forEach(c => {
-  let sq = document.createElement("div");
-  sq.className = "colorSquare";
-  sq.style.background = c;
-  sq.onclick = () => {
-    selectedColor = c;
-    colorBtn.style.background = c;
-    colorPalette.style.display = "none";
+if(colorBtn) colorBtn.style.background = selectedColor;
+
+colors.forEach(c=>{
+  let sq=document.createElement("div");
+  sq.className="colorSquare";
+  sq.style.background=c;
+  sq.onclick=()=>{
+    selectedColor=c;
+    if(colorBtn) colorBtn.style.background=c;
+    colorPalette.style.display="none";
   };
-  colorPalette.appendChild(sq);
+  if(colorPalette) colorPalette.appendChild(sq);
 });
 
-colorBtn.onclick = () => {
-  colorPalette.style.display =
-    colorPalette.style.display === "grid" ? "none" : "grid";
-};
-
-
+if(colorBtn){
+  colorBtn.onclick=()=>{
+    colorPalette.style.display=
+      colorPalette.style.display==="grid"?"none":"grid";
+  };
+}
 
 // ---------------- USERNAME CHECK ----------------
 
-postBtn.disabled = true;
+if(postBtn && username){
+  postBtn.disabled=true;
 
-username.oninput = () => {
-  postBtn.disabled = username.value.trim() === "";
-};
+  username.oninput=()=>{
+    postBtn.disabled=username.value.trim()==="";
+  };
+}
 
+// ---------------- POST ----------------
 
+window.post=function(){
 
-// ---------------- POST COMMENT ----------------
+  let text=msg.value.trim();
+  let name=username.value.trim();
 
-function post() {
+  // admin reset
+  if(name==="/reset"){
+    db.remove();
+    timerRef.set(Date.now()+TIMER_DURATION*1000);
+    msg.value="";
+    return;
+  }
 
-  let text = msg.value.trim();
-  let name = username.value.trim();
+  if(!name || !text) return;
 
-  if (!name) return alert("Enter your name first!");
-  if (!text) return;
+  let now=Date.now();
+
+  if(now-lastPostTime<SPAM_COOLDOWN){
+    alert("Slow down!");
+    return;
+  }
+
+  lastPostTime=now;
+
+  if(containsBannedWord(text)){
+    alert("Blocked message.");
+    return;
+  }
 
   db.push({
     name,
-    message: text,
-    color: selectedColor,
-    time: Date.now()
+    message:text,
+    color:selectedColor,
+    time:now
   });
 
-  // reset shared timer
-  timerRef.set(Date.now() + TIMER_DURATION * 1000);
+  timerRef.set(now+TIMER_DURATION*1000);
 
-  msg.value = "";
-}
+  msg.value="";
+};
 
+// ---------------- COMMENTS ----------------
 
+db.on("value", snap=>{
 
-// ---------------- LIVE COMMENTS ----------------
+  if(!comments) return;
 
-db.on("value", snap => {
+  comments.innerHTML="";
 
-  comments.innerHTML = "";
+  snap.forEach(c=>{
+    let d=c.val();
 
-  snap.forEach(c => {
-
-    let d = c.val();
-
-    comments.innerHTML += `
+    comments.innerHTML+=`
       <div class="comment">
         <span style="color:${d.color};font-weight:bold;">
           ${escapeHTML(d.name)}
@@ -319,43 +375,34 @@ db.on("value", snap => {
 
 });
 
-
-
 // ---------------- SECURITY ----------------
 
-function escapeHTML(str) {
-
-  return str.replace(/[&<>"']/g, m => ({
+function escapeHTML(str){
+  return str.replace(/[&<>"']/g,m=>({
     "&":"&amp;",
     "<":"&lt;",
     ">":"&gt;",
     '"':"&quot;",
     "'":"&#039;"
   }[m]));
-
 }
-
-
 
 // ---------------- RICKROLL ----------------
 
-function rickroll() {
-
-  document.getElementById("rickroll").style.display = "block";
+window.rickroll=function(){
+  document.getElementById("rickroll").style.display="block";
   document.getElementById("rickAudio").play();
+};
 
-}
+window.closeRickroll=function(){
+  let r=document.getElementById("rickroll");
+  let a=document.getElementById("rickAudio");
+  r.style.display="none";
+  a.pause();
+  a.currentTime=0;
+};
 
-function closeRickroll() {
-
-  document.getElementById("rickroll").style.display = "none";
-
-  let audio = document.getElementById("rickAudio");
-  audio.pause();
-  audio.currentTime = 0;
-
-}
-
+});
 
 </script>
 
