@@ -1,84 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Application</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div id="app">
-        <h1>Chat Application</h1>
-        <button id="darkModeToggle">Toggle Dark Mode</button>
-        <div id="chatArea"></div>
-        <input type="text" id="messageInput" placeholder="Type your message..." />
-        <button id="sendButton">Send</button>
-        <div id="timerDisplay"></div>
-    </div>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        // Timer management
-        let timerValue = parseInt(localStorage.getItem('timerValue')) || 0;
-        const timerDisplay = document.getElementById('timerDisplay');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const darkModeToggle = document.getElementById('darkModeToggle');
-
-        function updateTimer() {
-            timerValue++;
-            localStorage.setItem('timerValue', timerValue);
-            timerDisplay.innerText = `Timer: ${timerValue} seconds`;
-            database.ref('timers/sharedTimer').set(timerValue);
-        }
-
-        setInterval(updateTimer, 1000);
-
-        // Sync timer from Firebase
-        database.ref('timers/sharedTimer').on('value', (snapshot) => {
-            timerValue = snapshot.val() || 0;
-            localStorage.setItem('timerValue', timerValue);
-            timerDisplay.innerText = `Timer: ${timerValue} seconds`;
-        });
-
-        // Send message
-        sendButton.addEventListener('click', () => {
-            const message = messageInput.value;
-            if (message.trim() === '') {
-                alert('Message cannot be empty!');
-                return;
-            }
-            // Rate limiting
-            const timestamp = Date.now();
-            const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
-            if (timestamp - lastMessageTime < 2000) {
-                alert('You are sending messages too quickly!');
-                return;
-            }
-            localStorage.setItem('lastMessageTime', timestamp);
-            database.ref('messages').push({ message });
-            messageInput.value = '';
-        });
-
-        // Dark mode toggle
-        darkModeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-        });
-
-    </script>
-</body>
-</html>
+<script>
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyA6-aUnsjspvJ_cytAfGDYWRnF7ydc0wHk",
+    authDomain: "site-976a4.firebaseapp.com",
+    databaseURL: "https://site-976a4-default-rtdb.firebaseio.com",
+    projectId: "site-976a4",
+    storageBucket: "site-976a4.firebasestorage.app",
+    messagingSenderId: "580869997154",
+    appId: "1:580869997154:web:ed3ed829cdbb6b2101c73b",
+    measurementId: "G-K2N9HMFFZY"
+  };
+</script>
