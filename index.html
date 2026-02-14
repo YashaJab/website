@@ -2,6 +2,10 @@
 <html>
 <head>
 <title>Trying hard</title>
+<audio id="rickAudio" loop>
+  <source src="https://archive.org/download/NeverGonnaGiveYouUp/jocofullinterview41.mp3" type="audio/mpeg">
+</audio>
+
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -254,10 +258,18 @@ function escapeHTML(str) {
 // Rickroll
 function rickroll() {
   document.getElementById("rickroll").style.display = "block";
+
+  // ADD THIS
+  document.getElementById("rickAudio").play();
 }
 
 function closeRickroll() {
   document.getElementById("rickroll").style.display = "none";
+
+  // ADD THIS
+  let audio = document.getElementById("rickAudio");
+  audio.pause();
+  audio.currentTime = 0;
 }
 
 // Timer (10 minutes)
