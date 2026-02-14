@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -146,7 +147,8 @@ input:checked + .slider:before {
   
 </div>
 
-<div id="timer">Reset in: 10:00</div>
+<div id="timer">Syncing...</div>
+
 
 <h2>Made by Tryhards</h2>
 
@@ -161,19 +163,78 @@ input:checked + .slider:before {
 </div>
 
 <script>
-
-// Firebase
+// Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyA6-aUnsjspvJ_cytAfGDYWRnF7ydc0wHk",
+  apiKey: "YOUR_API_KEY",
   authDomain: "site-976a4.firebaseapp.com",
   databaseURL: "https://site-976a4-default-rtdb.firebaseio.com",
   projectId: "site-976a4",
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database().ref("comments");
 
-// 20 colors
+const db = firebase.database().ref("comments");
+const timerRef = firebase.database().ref("globalTimer");
+
+const TIMER_DURATION = 600; // 10 minutes
+
+
+
+// ---------------- TIMER SYNC ----------------
+
+let resetAt = null;
+let synced = false;
+
+// create timer once (no refresh reset)
+timerRef.transaction(current => {
+  if (current === null) {
+    return Date.now() + TIMER_DURATION * 1000;
+  }
+  return current;
+});
+
+// listen for shared timer
+timerRef.on("value", snap => {
+  resetAt = snap.val();
+  if (resetAt) synced = true;
+});
+
+// display timer
+setInterval(() => {
+
+  if (!synced) {
+    timer.innerText = "Syncing...";
+    return;
+  }
+
+  let remaining =
+    Math.floor((resetAt - Date.now()) / 1000);
+
+  if (remaining <= 0) {
+
+    timerRef.transaction(current => {
+      if (current <= Date.now()) {
+        db.remove();
+        return Date.now() + TIMER_DURATION * 1000;
+      }
+      return current;
+    });
+
+    remaining = TIMER_DURATION;
+  }
+
+  let m = Math.floor(remaining / 60);
+  let s = remaining % 60;
+
+  timer.innerText =
+    `Reset in: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+}, 1000);
+
+
+
+// ---------------- COLOR SYSTEM ----------------
+
 const colors = [
 "#ff0000","#00ff00","#0000ff","#ff9900","#ff00ff",
 "#00ffff","#800000","#008000","#000080","#808000",
@@ -184,8 +245,6 @@ const colors = [
 let selectedColor = colors[0];
 colorBtn.style.background = selectedColor;
 
-// Build color grid
-colorPalette.style.display = "grid";
 colors.forEach(c => {
   let sq = document.createElement("div");
   sq.className = "colorSquare";
@@ -198,99 +257,107 @@ colors.forEach(c => {
   colorPalette.appendChild(sq);
 });
 
-// Toggle palette
 colorBtn.onclick = () => {
   colorPalette.style.display =
     colorPalette.style.display === "grid" ? "none" : "grid";
 };
 
-// Require username
+
+
+// ---------------- USERNAME CHECK ----------------
+
 postBtn.disabled = true;
+
 username.oninput = () => {
   postBtn.disabled = username.value.trim() === "";
 };
 
+
+
+// ---------------- POST COMMENT ----------------
+
 function post() {
+
   let text = msg.value.trim();
   let name = username.value.trim();
 
-  if (!name) {
-    alert("You must enter your name to chat.");
-    return;
-  }
-
+  if (!name) return alert("Enter your name first!");
   if (!text) return;
 
   db.push({
-    name: name,
+    name,
     message: text,
     color: selectedColor,
     time: Date.now()
   });
 
+  // reset shared timer
+  timerRef.set(Date.now() + TIMER_DURATION * 1000);
+
   msg.value = "";
-  timeLeft = 600; // Reset timer to 10 minutes
 }
 
-// Real-time listener
+
+
+// ---------------- LIVE COMMENTS ----------------
+
 db.on("value", snap => {
+
   comments.innerHTML = "";
+
   snap.forEach(c => {
-    let data = c.val();
+
+    let d = c.val();
+
     comments.innerHTML += `
       <div class="comment">
-        <span style="color:${data.color}; font-weight:bold;">
-          ${escapeHTML(data.name)}
-        </span>: ${escapeHTML(data.message)}
-      </div>
-    `;
+        <span style="color:${d.color};font-weight:bold;">
+          ${escapeHTML(d.name)}
+        </span>: ${escapeHTML(d.message)}
+      </div>`;
   });
+
 });
 
-// Prevent HTML injection
+
+
+// ---------------- SECURITY ----------------
+
 function escapeHTML(str) {
+
   return str.replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",
-    '"':"&quot;","'":"&#039;"
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
   }[m]));
+
 }
 
-// Rickroll
-function rickroll() {
-  document.getElementById("rickroll").style.display = "block";
 
-  // ADD THIS
+
+// ---------------- RICKROLL ----------------
+
+function rickroll() {
+
+  document.getElementById("rickroll").style.display = "block";
   document.getElementById("rickAudio").play();
+
 }
 
 function closeRickroll() {
+
   document.getElementById("rickroll").style.display = "none";
 
-  // ADD THIS
   let audio = document.getElementById("rickAudio");
   audio.pause();
   audio.currentTime = 0;
+
 }
-
-// Timer (10 minutes)
-let timeLeft = 600;
-
-setInterval(() => {
-  timeLeft--;
-  let min = Math.floor(timeLeft / 60);
-  let sec = timeLeft % 60;
-  timer.innerText =
-    `Reset in: ${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-
-  if (timeLeft <= 0) {
-    db.remove();
-    timeLeft = 600;
-  }
-}, 1000);
 
 
 </script>
 
 </body>
 </html>
-
